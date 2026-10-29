@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CPM2 AI Driver</string>
+    <string name="service_summary">Вводит касания в игру вместо тебя</string>
+    <string name="service_desc">AI-драйвер для Car Parking Multiplayer 2: автоматически вводит касания (руль, газ, тормоз) прямо в игру — без скриншотов. На Android 14+ умеет запоминать твою езду и повторять её.</string>
+    <string name="notif_channel">AI-драйвер</string>
+</resources>
