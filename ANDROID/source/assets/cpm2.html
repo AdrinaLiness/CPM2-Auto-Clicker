@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>CPM2 AI Driver</title>
+<style>
+  :root{
+    --bg:#0d111c; --panel:#151d2e; --panel2:#1b2438; --line:#26334d;
+    --txt:#e8eef8; --mut:#8fa0bd; --acc:#ff7a18; --acc2:#409cff;
+    --ok:#3ddc68; --bad:#ff5a5a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--txt);
+    font-family:-apple-system,'Segoe UI',Roboto,'Noto Sans',sans-serif;
+    font-size:15px; overflow:hidden;
+  }
+  #app{display:flex; flex-direction:column; height:100%}
+
+  /* ---------- ШАПКА ---------- */
+  header{
+    padding:10px 14px; display:flex; align-items:center; gap:10px;
+    border-bottom:1px solid var(--line); background:var(--panel); flex:0 0 auto;
+  }
+  .logo{
+    width:38px; height:38px; border-radius:12px; flex:0 0 auto;
+    background:radial-gradient(circle at 35% 35%, #1e2a44, #0d111c);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--acc); font-size:20px;
+  }
+  .ttl{flex:1; min-width:0}
+  .ttl b{font-size:16px; letter-spacing:.4px}
+  .ttl span{display:block; font-size:11px; color:var(--mut)}
+  #chipSvc{
+    font-size:12px; padding:6px 12px; border-radius:20px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--mut); white-space:nowrap; cursor:pointer;
+  }
+  #chipSvc.on{color:#0d111c; background:var(--ok); border-color:var(--ok); font-weight:700}
+
+  /* ---------- ТАБЫ ---------- */
+  nav{display:flex; background:var(--panel); border-bottom:1px solid var(--line); flex:0 0 auto; overflow-x:auto}
+  nav button{
+    flex:1; min-width:72px; padding:9px 4px; background:none; border:none; color:var(--mut);
+    font-size:12px; font-weight:600; border-bottom:2px solid transparent; cursor:pointer;
+  }
+  nav button.act{color:var(--acc); border-bottom-color:var(--acc)}
+
+  main{flex:1; overflow-y:auto; padding:12px; -webkit-overflow-scrolling:touch}
+  .page{display:none}
+  .page.act{display:block}
+
+  /* ---------- ЭЛЕМЕНТЫ ---------- */
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px}
+  .card h3{font-size:13px; color:var(--mut); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px}
+  .row{display:flex; gap:8px; flex-wrap:wrap}
+  .btn{
+    flex:1; min-width:110px; padding:13px 10px; border:none; border-radius:12px;
+    background:var(--panel2); color:var(--txt); font-size:14px; font-weight:700; cursor:pointer;
+    border:1px solid var(--line);
+  }
+  .btn:active{transform:scale(.97)}
+  .btn.acc{background:var(--acc); color:#141414; border-color:var(--acc)}
+  .btn.blue{background:var(--acc2); color:#0b1526; border-color:var(--acc2)}
+  .btn.grn{background:var(--ok); color:#0c1a10; border-color:var(--ok)}
+  .btn.red{background:var(--bad); color:#210a0a; border-color:var(--bad)}
+  .btn.gh{background:transparent}
+  .btn.sm{min-width:0; flex:0 0 auto; padding:9px 12px; font-size:12px}
+  .btn[disabled]{opacity:.4; pointer-events:none}
+  select,input[type=number],input[type=text]{
+    background:var(--panel2); border:1px solid var(--line); color:var(--txt);
+    border-radius:10px; padding:11px; font-size:14px; width:100%;
+  }
+  label.fl{display:block; font-size:12px; color:var(--mut); margin:8px 0 4px}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+  .stat{display:flex; justify-content:space-between; font-size:13px; padding:7px 0; border-bottom:1px dashed var(--line)}
+  .stat b{color:var(--acc2)}
+
+  /* уровни */
+  #lvGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:8px}
+  .lv{
+    background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:10px 8px;
+    text-align:center; cursor:pointer; position:relative;
+  }
+  .lv .n{font-size:20px; font-weight:800}
+  .lv .s{font-size:10px; color:var(--mut); margin-top:2px}
+  .lv.rec{border-color:var(--acc2)}
+  .lv.rec .s{color:var(--acc2)}
+  .lv.win{border-color:var(--ok)}
+  .lv.win .s{color:var(--ok)}
+  .lv.sel{outline:2px solid var(--acc)}
+  .lv .b{position:absolute; top:-6px; right:-6px; background:var(--acc); color:#141414;
+         font-size:10px; font-weight:800; border-radius:10px; padding:1px 6px}
+
+  /* редактор манёвров */
+  .phase{
+    display:flex; gap:6px; align-items:center; background:var(--panel2);
+    border:1px solid var(--line); border-radius:10px; padding:8px; margin-bottom:6px; font-size:13px;
+  }
+  .phase .ix{color:var(--acc); font-weight:800; width:22px; text-align:center; flex:0 0 auto}
+  .phase .tx{flex:1; min-width:0}
+  .phase button{background:none; border:none; color:var(--mut); font-size:16px; padding:2px 6px; cursor:pointer}
+
+  /* калибровка */
+  #calPad{
+    position:relative; background:linear-gradient(180deg,#131a29,#0e1420);
+    border:1px solid var(--line); border-radius:14px; height:300px; overflow:hidden;
+  }
+  .calPt{position:absolute; transform:translate(-50%,-50%); background:var(--panel2);
+         border:1px solid var(--acc2); color:var(--txt); font-size:11px; border-radius:10px; padding:6px 8px; white-space:nowrap}
+  .calPt.set{border-color:var(--ok); color:var(--ok)}
+
+  /* журнал */
+  #log{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11.5px; line-height:1.55;
+       background:#0a0e17; border:1px solid var(--line); border-radius:12px; padding:10px;
+       height:100%; overflow-y:auto; color:#a9b8d4; white-space:pre-wrap; word-break:break-word}
+  #log .i{color:var(--acc2)} #log .w{color:var(--acc)} #log .e{color:var(--bad)} #log .g{color:var(--ok)}
+
+  /* ---------- ГОРИЗОНТАЛЬНАЯ ОРИЕНТАЦИЯ ---------- */
+  @media (orientation: landscape){
+    #app{flex-direction:row; flex-wrap:wrap}
+    header{width:100%; padding:8px 14px}
+    nav{width:64px; flex-direction:column; border-bottom:none; border-right:1px solid var(--line); align-self:stretch}
+    nav button{border-bottom:none; border-right:2px solid transparent; padding:14px 4px; font-size:11px}
+    nav button.act{border-right-color:var(--acc); border-bottom-color:transparent}
+    main{flex:1; padding:14px}
+    #log{height:100%}
+    #calPad{height:100%}
+  }
+  .hint{font-size:12px; color:var(--mut); line-height:1.5; margin-top:8px}
+  .pill{display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700}
+  .pill.g{background:rgba(61,220,104,.15); color:var(--ok)}
+  .pill.o{background:rgba(255,122,24,.15); color:var(--acc)}
+  .pill.b{background:rgba(64,156,255,.15); color:var(--acc2)}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">&#128030;</div>
+    <div class="ttl"><b>CPM2 AI DRIVER</b><span id="sub">залезает в игру и ведёт машину — без скриншотов</span></div>
+    <div id="chipSvc" onclick="openAccess()">СЕРВИС ВЫКЛ</div>
+  </header>
+
+  <nav>
+    <button data-p="drive" class="act">&#127950; Езда</button>
+    <button data-p="levels">&#128203; Уровни</button>
+    <button data-p="brain">&#129504; Манёвры</button>
+    <button data-p="calib">&#127919; Калибровка</button>
+    <button data-p="jlog">&#128220; Журнал</button>
+  </nav>
+
+  <main>
+    <!-- ================= ЕЗДА ================= -->
+    <section class="page act" id="p-drive">
+      <div class="card">
+        <h3>Игра</h3>
+        <div class="row">
+          <button class="btn acc" onclick="launchGame()">&#127918; ОТКРЫТЬ ИГРУ</button>
+          <button class="btn gh" onclick="openAccess()">&#9881; Сервис доступности</button>
+        </div>
+        <div class="hint" id="fgHint">Игра на переднем плане: <span class="pill" id="fgPill">—</span></div>
+      </div>
+
+      <div class="card">
+        <h3>Заезд</h3>
+        <div class="grid2">
+          <div>
+            <label class="fl">Уровень</label>
+            <input type="number" id="runLevel" min="1" max="999" value="1">
+          </div>
+          <div>
+            <label class="fl">Что использовать</label>
+            <select id="runKind">
+              <option value="auto">AI: решение или стратегии</option>
+              <option value="replay">Только запись (повтор)</option>
+              <option value="strat">Только стратегии AI</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn grn" onclick="runStart()">&#9654; СТАРТ</button>
+          <button class="btn red" onclick="CPM2.stop()">&#9724; СТОП</button>
+        </div>
+        <div class="hint">AI сам выберет: сохранённое решение уровня → если нет, попробует стратегии одну за другой.
+        В игре жми <b>&#10003;</b> (победа) или <b>&#10005;</b> (провал) на плавающей панели.</div>
+      </div>
+
+      <div class="card">
+        <h3>Обучение показом (Android 14+)</h3>
+        <div class="row">
+          <button class="btn blue" id="btnRec" onclick="recToggle()">&#9679; ЗАПИСАТЬ ЕЗДУ</button>
+          <button class="btn gh" onclick="replayLast()">&#128257; ПОВТОРИТЬ ПОСЛЕДНЮЮ</button>
+        </div>
+        <div class="hint" id="recHint">Запись ловит ТВОИ касания в игре и запоминает их до миллисекунд.
+        Проедь уровень сам 1 раз — дальше AI повторит идеально сколько нужно.</div>
+      </div>
+
+      <div class="card">
+        <h3>Настройки</h3>
+        <label class="fl">Режим управления в игре</label>
+        <div class="row">
+          <button class="btn" id="mArrows" onclick="setMode('arrows')">&#11013;&#10145; Кнопки</button>
+          <button class="btn" id="mWheel" onclick="setMode('wheel')">&#128030; Руль</button>
+        </div>
+        <label class="fl">Плавающая панель в игре</label>
+        <div class="row">
+          <button class="btn grn sm" onclick="CPM2.setOverlay(true)">&#9654; показывать</button>
+          <button class="btn gh sm" onclick="CPM2.setOverlay(false)">&#9724; скрыть</button>
+        </div>
+        <div class="stat"><span>Экран</span><b id="scrStat">—</b></div>
+        <div class="stat"><span>Запись касаний</span><b id="recStat">—</b></div>
+      </div>
+    </section>
+
+    <!-- ================= УРОВНИ ================= -->
+    <section class="page" id="p-levels">
+      <div class="card">
+        <h3>Прогресс по уровням</h3>
+        <div id="lvGrid"></div>
+        <div class="hint">Нажми на уровень, чтобы выбрать его. <span class="pill b">запись</span> — есть записанная езда,
+        <span class="pill g">победы</span> — AI проходил. Данные хранятся в приложении.</div>
+      </div>
+      <div class="card">
+        <h3>Выбранный уровень <span id="lvTitle" style="color:var(--acc)">1</span></h3>
+        <div class="row">
+          <button class="btn blue sm" onclick="recordFor(lvl)">&#9679; Записать заново</button>
+          <button class="btn grn sm" onclick="runStart()">&#9654; Пройти</button>
+          <button class="btn gh sm" onclick="clearLevel()">&#128465; Сброс</button>
+        </div>
+        <div id="lvInfo" class="hint">—</div>
+      </div>
+    </section>
+
+    <!-- ================= МАНЁВРЫ ================= -->
+    <section class="page" id="p-brain">
+      <div class="card">
+        <h3>Стратегии AI</h3>
+        <select id="stratSel">
+          <option value="straight">Прямая парковка (вперёд)</option>
+          <option value="arcL">Дуга влево</option>
+          <option value="arcR">Дуга вправо</option>
+          <option value="revS">Задним ходом, S-манёвр</option>
+          <option value="parallel">Параллельная (вперёд-назад)</option>
+        </select>
+        <div class="row" style="margin-top:10px">
+          <button class="btn acc sm" onclick="tryStrategy()">&#9654; Попробовать</button>
+          <button class="btn sm" onclick="saveStrategy()">&#128190; Сохранить как решение</button>
+        </div>
+        <div class="hint">Слепые стратегии — «попытки»: AI ведёт машину по типовой траектории.
+        Как только ты жмёшь &#10003; в игре — попытка становится сохранённым решением уровня.</div>
+      </div>
+
+      <div class="card">
+        <h3>Решение уровня <span id="phTitle" style="color:var(--acc)">1</span> — шаги</h3>
+        <div id="phList"></div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn sm" onclick="phAdd()">&#65291; Шаг</button>
+          <button class="btn blue sm" onclick="phPlay()">&#9654; Проиграть</button>
+          <button class="btn gh sm" onclick="phSave()">&#128190; Сохранить</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= КАЛИБРОВКА ================= -->
+    <section class="page" id="p-calib">
+      <div class="card">
+        <h3>Где какие кнопки в CPM2</h3>
+        <div class="hint">Открой игру, замерь на глаз: какой процент ширины/высоты экрана занимает каждая кнопка.
+        Проще: жми поле ниже, потом в игре на паузе прикидывай. Или тапни прямо по мини-схеме.</div>
+        <div id="calPad"></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn grn sm" onclick="calTest('gas')">&#128293; Тест: газ 1с</button>
+          <button class="btn gh sm" onclick="calTest('brake')">Тест: тормоз 1с</button>
+          <button class="btn gh sm" onclick="calTest('left')">Тест: влево 1с</button>
+          <button class="btn gh sm" onclick="calTest('right')">Тест: вправо 1с</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn acc sm" onclick="calSave()">&#128190; СОХРАНИТЬ КАЛИБРОВКУ</button>
+          <button class="btn gh sm" onclick="calReset()">&#8635; Дефолт</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= ЖУРНАЛ ================= -->
+    <section class="page" id="p-jlog">
+      <div id="log"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+'use strict';
+/* ================================================================
+   CPM2 AI Driver — мозг. Работает поверх Java-моста window.CPM2
+   ================================================================ */
+var lvl = 1;                       // выбранный уровень
+var levels = {};                   // { "5": {kind:'record',data,wins,tries} | {kind:'phases',steps,wins,tries} }
+var recording = false;
+var lastRecord = null;
+var controls = {};                 // {gas:{x,y}, ...} в процентах
+var mode = 'arrows';
+var runTimer = null;
+var awaitVerdict = null;           // {level, variant, steps} — ждём ✓/✕
+
+var GAME_PKGS = ['com.olzhass.carparking2','com.olzhass.carparking.two','com.olzhass.cpm2','com.olzhass.carparking'];
+
+/* ---------------- мост-обёртки ---------------- */
+function st(){ try { return JSON.parse(CPM2.status()); } catch(e){ return {}; } }
+function log(s, cls){
+  var el = document.getElementById('log');
+  var t = new Date().toLocaleTimeString('ru-RU');
+  el.innerHTML += '<span class="'+(cls||'')+'">['+t+'] '+s+'</span>\n';
+  el.scrollTop = el.scrollHeight;
+}
+window.__svcEvent = function(json){
+  var e; try { e = JSON.parse(json); } catch(err){ return; }
+  switch(e.type){
+    case 'connected':   log('Сервис доступности подключён','g'); break;
+    case 'run_start':   log('Заезд: '+e.label+' ('+e.steps+' шагов)','w'); break;
+    case 'phase':       if(e.note) log('  • '+e.note+' (осталось '+e.left+')'); break;
+    case 'run_done':    log('Манёвр завершён. Жду вердикт: &#10003; или &#10005; в игре','g');
+                        onManeuverDone(); break;
+    case 'run_stop':    log('Остановлено игроком','e'); awaitVerdict = null; break;
+    case 'replay_start':log('Повтор записи ('+Math.round(e.dur/1000)+' с)','w'); break;
+    case 'record_start':log('ЗАПИСЬ касаний пошла — веди машину!','w'); break;
+    case 'record_stop': log('Запись остановлена: '+e.rows+' точек, '+Math.round(e.dur/1000)+' с','g'); break;
+    case 'error':       log('ОШИБКА: '+e.msg,'e'); break;
+    case 'foreground':  fgUpdate(e.pkg); break;
+    case 'mode':        mode = e.mode; drawMode(); break;
+    case 'recording_supported': drawStatus(); break;
+    case 'overlay':     onOverlay(e.act); break;
+  }
+};
+function onOverlay(act){
+  if (act === 'start'){ runStart(); return; }
+  if (act === 'success'){ verdict(true); return; }
+  if (act === 'fail'){ verdict(false); return; }
+  // stop обработан в Java
+}
+
+/* ---------------- статус/шапка ---------------- */
+function drawStatus(){
+  var s = st();
+  var chip = document.getElementById('chipSvc');
+  if (s.svc){ chip.textContent = 'СЕРВИС ВКЛ ✓'; chip.classList.add('on'); }
+  else { chip.textContent = 'СЕРВИС ВЫКЛ'; chip.classList.remove('on'); }
+  document.getElementById('scrStat').textContent = (s.screenW||'?') + ' × ' + (s.screenH||'?');
+  document.getElementById('recStat').textContent = s.recSupported ? 'доступна (Android 14+)' : 'нужен Android 14+';
+  document.getElementById('recHint').innerHTML = s.recSupported
+    ? 'Запись ловит ТВОИ касания в игре. Проедь уровень сам 1 раз — AI повторит идеально.'
+    : '<b style="color:var(--acc)">На этом телефоне (Android '+(s.sdk||'?')+') записи нет.</b> Используй редактор манёвров — он работает везде.';
+  drawMode();
+  document.getElementById('btnRec').textContent = recording ? '■ ОСТАНОВИТЬ ЗАПИСЬ' : '● ЗАПИСАТЬ ЕЗДУ';
+  document.getElementById('btnRec').classList.toggle('red', recording);
+}
+function drawMode(){
+  document.getElementById('mArrows').style.background = mode==='arrows' ? 'var(--acc2)' : '';
+  document.getElementById('mArrows').style.color      = mode==='arrows' ? '#0b1526' : '';
+  document.getElementById('mWheel').style.background  = mode==='wheel'  ? 'var(--acc2)' : '';
+  document.getElementById('mWheel').style.color       = mode==='wheel'  ? '#0b1526' : '';
+}
+function fgUpdate(pkg){
+  var p = document.getElementById('fgPill');
+  if (!pkg){ p.textContent='—'; p.className='pill'; return; }
+  var isGame = GAME_PKGS.indexOf(pkg) >= 0;
+  p.textContent = isGame ? 'CPM2 в игре ✓' : pkg;
+  p.className = 'pill ' + (isGame ? 'g' : 'b');
+}
+function openAccess(){ CPM2.openAccessSettings(); }
+function setMode(m){ CPM2.setMode(m); mode = m; drawMode(); log('Режим управления: '+m); }
+function launchGame(){
+  var found = CPM2.launchGame(JSON.stringify(GAME_PKGS));
+  if (found) { log('Игра запущена: '+found,'g'); } else { log('Игра не найдена — проверь установку','e'); }
+}
+
+/* ---------------- уровни ---------------- */
+function loadAll(){
+  try { levels = JSON.parse(CPM2.loadLevels() || '{}'); } catch(e){ levels = {}; }
+  try { controls = JSON.parse(CPM2.getControls() || '{}'); } catch(e){ controls = {}; }
+}
+function saveAll(){ CPM2.saveLevels(JSON.stringify(levels)); }
+function lvKey(){ return String(lvl); }
+function lvData(){ return levels[lvKey()] || null; }
+
+function drawLevels(){
+  var g = document.getElementById('lvGrid'); g.innerHTML = '';
+  var known = Object.keys(levels).map(Number);
+  var maxL = Math.max(20, lvl, known.length ? Math.max.apply(null, known) : 0);
+  for (var i = 1; i <= maxL; i++){
+    var d = levels[String(i)];
+    var cls = 'lv' + (i===lvl ? ' sel' : '') + (d ? (d.kind==='record' ? ' rec' : ' win') : '');
+    var badge = d && d.wins ? '<span class="b">'+d.wins+'</span>' : '';
+    var sub = !d ? 'нет решения' : (d.kind==='record' ? 'запись '+Math.round((d.data&&d.data.dur||0)/1000)+'с' : 'манёвр '+((d.steps||[]).length)+'ш');
+    g.innerHTML += '<div class="'+cls+'" onclick="pickLevel('+i+')">'+badge+'<div class="n">'+i+'</div><div class="s">'+sub+'</div></div>';
+  }
+  var d = lvData();
+  document.getElementById('lvTitle').textContent = lvl;
+  document.getElementById('phTitle').textContent = lvl;
+  document.getElementById('lvInfo').innerHTML = !d
+    ? 'Решения нет: AI попробует слепые стратегии, или запиши свою езду.'
+    : (d.kind==='record'
+       ? 'Сохранена ЗАПИСЬ твоей езды ('+Math.round((d.data&&d.data.dur||0)/1000)+' с). Побед: '+(d.wins||0)+', попыток: '+(d.tries||0)+'.'
+       : 'Сохранён МАНЁВР ('+((d.steps||[]).length)+' шагов). Побед: '+(d.wins||0)+', попыток: '+(d.tries||0)+'.');
+}
+function pickLevel(i){ lvl = i; document.getElementById('runLevel').value = i; drawLevels(); }
+function clearLevel(){ delete levels[lvKey()]; saveAll(); drawLevels(); log('Уровень '+lvl+' сброшен'); }
+function recordFor(n){ lvl = n; document.getElementById('runLevel').value = n; showTab('drive'); recToggle(); }
+
+/* ---------------- запись / повтор ---------------- */
+function recToggle(){
+  if (!recording){
+    CPM2.recordStart(); recording = true; CPM2.vibrate(80);
+  } else {
+    var data = CPM2.recordStop(); recording = false; CPM2.vibrate(40);
+    if (data){
+      var rec = JSON.parse(data);
+      lastRecord = rec;
+      levels[lvKey()] = { kind:'record', data:rec, wins:(lvData()&&lvData().wins)||0, tries:(lvData()&&lvData().tries)||0 };
+      saveAll(); drawLevels();
+      log('Запись сохранена как решение уровня '+lvl,'g');
+    }
+  }
+  drawStatus();
+}
+function replayLast(){
+  var d = lvData();
+  var rec = (d && d.kind==='record') ? d.data : lastRecord;
+  if (!rec){ log('Пока нет записей — сначала запиши свою езду','e'); return; }
+  CPM2.replay(JSON.stringify(rec), 'повтор ур.'+lvl);
+}
+
+/* ---------------- СТРАТЕГИИ (слепой AI) ---------------- */
+/* Фаза: {pedal:'gas'|'brake'|null, steer:-1..1|null, tap:'reverse'|null, ms, note} */
+function strategy(name, seed){
+  var j = (seed||0) * 0.12;   // вариация попыток
+  function v(ms){ return Math.round(ms * (1 + (Math.sin(seed*7+ms)*0.5) * j)); }
+  function S(){ return Math.max(-1, Math.min(1, seed ? (seed%2 ? 1 : -1) * (0.75 + 0.2*Math.abs(Math.sin(seed*3))) : 0)); }
+  switch(name){
+    case 'straight': return [
+      {tap:'reverse', ms:120, note:'реверс выкл (D)'},
+      {pedal:'gas', ms:v(2300), note:'прямо на газ'},
+      {pedal:'brake', ms:v(700), note:'тормоз у зоны'}
+    ];
+    case 'arcL': return [
+      {pedal:'gas', steer:-S(), ms:v(1900), note:'дуга влево на газу'},
+      {pedal:'gas', steer:null, ms:v(1200), note:'выравнивание'},
+      {pedal:'brake', ms:v(600), note:'тормоз'}
+    ];
+    case 'arcR': return [
+      {pedal:'gas', steer:S(), ms:v(1900), note:'дуга вправо на газу'},
+      {pedal:'gas', steer:null, ms:v(1200), note:'выравнивание'},
+      {pedal:'brake', ms:v(600), note:'тормоз'}
+    ];
+    case 'revS': return [
+      {pedal:'gas', ms:v(1500), note:'подъезд'},
+      {pedal:'brake', ms:400, note:'стоп'},
+      {tap:'reverse', ms:150, note:'R'},
+      {pedal:'gas', steer:-0.8, ms:v(1600), note:'назад, руль влево'},
+      {pedal:'brake', ms:500, note:'стоп'},
+      {tap:'reverse', ms:150, note:'D'},
+      {pedal:'gas', steer:0.5, ms:v(1300), note:'вперёд, доворот'},
+      {pedal:'brake', ms:v(500), note:'тормоз'}
+    ];
+    case 'parallel': return [
+      {pedal:'gas', steer:0.6, ms:v(1400), note:'вперёд с поворотом'},
+      {pedal:'brake', ms:400, note:'стоп'},
+      {tap:'reverse', ms:150, note:'R'},
+      {pedal:'gas', steer:-0.7, ms:v(1500), note:'назад с обратным'},
+      {pedal:'brake', ms:400, note:'стоп'},
+      {tap:'reverse', ms:150, note:'D'},
+      {pedal:'gas', steer:-0.4, ms:v(1200), note:'подровнять'},
+      {pedal:'brake', ms:v(600), note:'финиш'}
+    ];
+  }
+  return [];
+}
+function STRATS(){ return ['straight','arcL','arcR','revS','parallel']; }
+
+/* ---------------- ЗАЕЗД ---------------- */
+function runStart(){
+  lvl = parseInt(document.getElementById('runLevel').value) || 1;
+  var kind = document.getElementById('runKind').value;
+  var d = lvData();
+  var s = st();
+  if (!s.svc){ log('Включи сервис доступности (кнопка в шапке)','e'); return; }
+
+  var plan = null, label = '';
+  if (kind !== 'strat' && d && d.kind === 'record'){ plan = {record: d.data}; label = 'запись ур.'+lvl; }
+  else if (kind !== 'strat' && d && d.kind === 'phases'){ plan = {steps: d.steps}; label = 'манёвр ур.'+lvl; }
+  else {
+    var idx = (d && d.tries) ? (d.tries % STRATS().length) : 0;
+    plan = {steps: strategy(STRATS()[idx], (d&&d.tries||0)+1)}; label = 'стратегия «'+STRATS()[idx]+'» ур.'+lvl;
+  }
+  d = d || (levels[lvKey()] = { wins:0, tries:0 });
+  d.tries = (d.tries||0) + 1; saveAll(); drawLevels();
+
+  if (plan.record){
+    CPM2.replay(JSON.stringify(plan.record), label);
+  } else {
+    CPM2.run(JSON.stringify(plan.steps), label);
+  }
+  awaitVerdict = { level: lvl, label: label, t0: Date.now() };
+  // 3 минуты на вердикт
+  clearTimeout(runTimer);
+  runTimer = setTimeout(function(){ if (awaitVerdict){ log('Вердикт не получен за 3 мин — считаю провалом','e'); verdict(false); } }, 180000);
+}
+function onManeuverDone(){
+  // манёвр доиграл — вердикт придёт от пользователя через оверлей
+}
+function verdict(success){
+  clearTimeout(runTimer);
+  var d = levels[lvKey()] || { wins:0, tries:0 };
+  if (success){
+    d.wins = (d.wins||0) + 1;
+    // если сейчас играла слепая стратегия — зафиксируем её как решение
+    if (!d.kind){
+      var idx = ((d.tries||1) - 1) % STRATS().length;
+      d.kind = 'phases'; d.steps = strategy(STRATS()[idx], d.tries||1);
+    }
+    log('✓ ПОБЕДА на уровне '+lvl+'! Решение сохранено, побед: '+d.wins,'g');
+    CPM2.notify('CPM2 AI Driver', 'Уровень '+lvl+' ПРОЙДЕН ✓ (побед: '+d.wins+')');
+    CPM2.vibrate(300);
+  } else {
+    log('✗ Провал уровня '+lvl+'. В следующий раз AI возьмёт другую стратегию','e');
+    CPM2.notify('CPM2 AI Driver', 'Уровень '+lvl+': попытка не удалась — сменю стратегию');
+  }
+  levels[lvKey()] = d; saveAll(); drawLevels();
+  awaitVerdict = null;
+}
+
+/* ---------------- редактор манёвров ---------------- */
+function curPhases(){
+  var d = lvData();
+  if (d && d.kind === 'phases' && d.steps) return d.steps;
+  var sel = document.getElementById('stratSel').value;
+  return strategy(sel, 1);
+}
+function setPhases(steps){
+  var d = levels[lvKey()] = levels[lvKey()] || { wins:0, tries:0 };
+  d.kind = 'phases'; d.steps = steps; saveAll(); drawLevels(); drawPhases();
+}
+function drawPhases(){
+  var steps = curPhases(); var el = document.getElementById('phList'); el.innerHTML = '';
+  var names = {gas:'ГАЗ', brake:'ТОРМОЗ', left:'ВЛЕВО', right:'ВПРАВО', reverse:'РЕВЕРС', wheel:'РУЛЬ'};
+  for (var i = 0; i < steps.length; i++){
+    var p = steps[i];
+    var tx = [];
+    if (p.tap) tx.push('ТАП '+(names[p.tap]||p.tap));
+    if (p.pedal) tx.push((names[p.pedal]||p.pedal)+(p.steer!=null?(' + руль '+(p.steer>0?'вправо':'влево')+' '+Math.round(Math.abs(p.steer)*100)+'%'):''));
+    if (!tx.length) tx.push('ПАУЗА');
+    tx.push(Math.round(p.ms)+' мс');
+    el.innerHTML += '<div class="phase"><span class="ix">'+(i+1)+'</span><span class="tx">'+tx.join(' · ')+'</span>'+
+      '<button onclick="phUp('+i+')">&#8593;</button><button onclick="phDel('+i+')">&#10005;</button></div>';
+  }
+  if (!steps.length) el.innerHTML = '<div class="hint">Пусто. Добавь шаг.</div>';
+}
+function phAdd(){
+  var steps = curPhases();
+  steps.push({pedal:'gas', steer:null, ms:1000, note:'шаг'});
+  setPhases(steps);
+}
+function phDel(i){ var s = curPhases(); s.splice(i,1); setPhases(s); }
+function phUp(i){ var s = curPhases(); if (i>0){ var t=s[i-1]; s[i-1]=s[i]; s[i]=t; setPhases(s); } }
+function phPlay(){
+  var steps = curPhases();
+  var s = st(); if (!s.svc){ log('Включи сервис доступности','e'); return; }
+  CPM2.run(JSON.stringify(steps), 'проверка манёвра ур.'+lvl);
+}
+function phSave(){ setPhases(curPhases()); log('Манёвр сохранён как решение уровня '+lvl,'g'); }
+function tryStrategy(){
+  var sel = document.getElementById('stratSel').value;
+  setPhases(strategy(sel, (lvData()&&lvData().tries||0)+1));
+  phPlay();
+}
+function saveStrategy(){ phSave(); }
+
+/* ---------------- калибровка ---------------- */
+var CAL_KEYS = [
+  ['gas','ГАЗ'],['brake','ТОРМОЗ'],['left','ВЛЕВО'],['right','ВПРАВО'],
+  ['reverse','РЕВЕРС'],['wheel','РУЛЬ (центр)']
+];
+function drawCal(){
+  var pad = document.getElementById('calPad'); pad.innerHTML = '';
+  for (var i = 0; i < CAL_KEYS.length; i++){
+    (function(k, name){
+      var c = controls[k] || {x:50, y:50};
+      var el = document.createElement('div');
+      el.className = 'calPt' + (controls[k] ? ' set' : '');
+      el.style.left = c.x + '%'; el.style.top = c.y + '%';
+      el.textContent = name + ' ' + Math.round(c.x) + '%·' + Math.round(c.y) + '%';
+      el.onclick = function(ev){
+        var r = pad.getBoundingClientRect();
+        c.x = Math.round((ev.clientX - r.left) / r.width * 1000)/10;
+        c.y = Math.round((ev.clientY - r.top) / r.height * 1000)/10;
+        el.style.left = c.x+'%'; el.style.top = c.y+'%';
+        el.classList.add('set');
+        controls[k] = c;
+      };
+      pad.appendChild(el);
+    })(CAL_KEYS[i][0], CAL_KEYS[i][1]);
+  }
+}
+function calSave(){
+  CPM2.setControls(JSON.stringify(controls));
+  log('Калибровка сохранена','g'); CPM2.vibrate(60);
+}
+function calReset(){ controls = {}; CPM2.setControls('{}'); drawCal(); log('Калибровка сброшена к дефолту'); }
+function calTest(k){
+  var s = st(); if (!s.svc){ log('Включи сервис доступности','e'); return; }
+  var phase = { ms:1000 };
+  if (k==='gas'||k==='brake') phase.pedal = k;
+  else phase.steer = (k==='left' ? -0.6 : 0.6);
+  CPM2.run(JSON.stringify([phase]), 'тест '+k);
+}
+
+/* ---------------- табы ---------------- */
+function showTab(id){
+  var pages = document.querySelectorAll('.page');
+  for (var i=0;i<pages.length;i++) pages[i].classList.toggle('act', pages[i].id === 'p-'+id);
+  var bs = document.querySelectorAll('nav button');
+  for (var j=0;j<bs.length;j++) bs[j].classList.toggle('act', bs[j].getAttribute('data-p') === id);
+  if (id==='levels') drawLevels();
+  if (id==='brain') drawPhases();
+  if (id==='calib') drawCal();
+}
+(function initTabs(){
+  var bs = document.querySelectorAll('nav button');
+  for (var i=0;i<bs.length;i++) bs[i].onclick = function(){ showTab(this.getAttribute('data-p')); };
+})();
+
+/* ---------------- старт ---------------- */
+loadAll();
+drawStatus();
+drawLevels();
+drawPhases();
+drawCal();
+log('CPM2 AI Driver готов. Шаг 1: включи Сервис доступности. Шаг 2: «ОТКРЫТЬ ИГРУ». Шаг 3: калибровка кнопок.','i');
+log('Быстрый результат: Уровни → выбери уровень → «Записать заново» → проеди сам → «Пройти».','i');
+setInterval(function(){ drawStatus(); }, 3000);
+CPM2.keepScreenOn(true);
+</script>
+</body>
+</html>
